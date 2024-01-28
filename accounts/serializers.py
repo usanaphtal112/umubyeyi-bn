@@ -16,4 +16,9 @@ class CustomUserSerializers(serializers.Serializer):
 class UserRoleSerializers(serializers.ModelSerializer):
     class Meta:
         model = Role
-        field = "__all__"
+        fields = "__all__"
+
+
+class UserLoginSerializers(serializers.Serializer):
+    phonenumber = serializers.CharField()
+    password = serializers.CharField(write_only=True)

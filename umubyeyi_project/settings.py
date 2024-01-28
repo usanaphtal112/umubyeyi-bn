@@ -28,7 +28,8 @@ env.read_env()
 SECRET_KEY = env.str("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.str("DJANGO_DEBUG", default="True").lower() == "true"
+DEBUG = True
+# DEBUG = env.str("DJANGO_DEBUG", default="True").lower() == "true"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
     # Third party apps
     "rest_framework",
     "corsheaders",
+    "rest_framework_simplejwt",
     "drf_spectacular",
     # Local App
     "accounts.apps.AccountsConfig",
