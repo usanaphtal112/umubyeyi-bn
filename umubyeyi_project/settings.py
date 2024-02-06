@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     # Local App
     "accounts.apps.AccountsConfig",
+    "umubyeyi.apps.UmubyeyiConfig",
 ]
 
 MIDDLEWARE = [
