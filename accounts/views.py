@@ -4,7 +4,6 @@ from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-
 from .serializers import (
     CustomUserSerializers,
     UserLoginSerializers,
@@ -32,7 +31,8 @@ class UserCreateAPIView(generics.CreateAPIView):
         phonenumber = data.get("phonenumber")
         username = data.get("username")
 
-        if UserRegistrationValidator.validate_phone_number(phonenumber):
+        # Check if phone number is already taken
+        if get_user_model().objects.filter(phonenumber=phonenumber).exists():
             return Response(
                 {"error": "Phone Number already used."}, status=status.HTTP_409_CONFLICT
             )
