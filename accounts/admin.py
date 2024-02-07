@@ -7,6 +7,7 @@ from .models import CustomUser, Role
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
     list_display = (
+        "id",
         "phonenumber",
         "username",
         "email",

@@ -1,16 +1,18 @@
 from django.db import models
 from datetime import datetime
 from django.core.validators import MinValueValidator, MaxValueValidator
+from accounts.models import CustomUser
 from .calculations import Pregnancy
 
 
 class LastMenstrualPeriod(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     last_menstrual_period = models.DateField()
     current_date = models.DateField(default=datetime.now)
     days_pregnant = models.IntegerField(blank=True, null=True)
     weeks_pregnant = models.FloatField(blank=True, null=True)
     trimester = models.IntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(3)]
+        blank=True, null=True, validators=[MinValueValidator(1), MaxValueValidator(3)]
     )
     expected_date_delivery = models.DateField(blank=True, null=True)
 
