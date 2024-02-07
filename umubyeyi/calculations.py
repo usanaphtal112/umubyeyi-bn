@@ -43,4 +43,12 @@ class Pregnancy:
             timedelta(280).days - abs((current_date - expected_date_delivery)).days
         )
 
-        return expected_date_delivery, weeks_of_pregnancy, days_of_pregnancy
+        if weeks_of_pregnancy >= 1 and weeks_of_pregnancy <= 20:
+            trimester = 1
+        elif weeks_of_pregnancy > 20 and weeks_of_pregnancy <= 35:
+            trimester = 2
+
+        else:
+            trimester = 3
+
+        return expected_date_delivery, weeks_of_pregnancy, days_of_pregnancy, trimester
