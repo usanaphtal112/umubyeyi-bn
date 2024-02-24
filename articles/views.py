@@ -1,9 +1,7 @@
-from rest_framework import generics, status
-from rest_framework.response import Response
+from rest_framework import generics
 from .models import Post
 from .serializers import PostSerializer
-from rest_framework.exceptions import PermissionDenied
-from umubyeyi.models import LastMenstrualPeriod
+from .permissions import IsAdminOrHealthAdvisorOrReadOnly
 from drf_spectacular.utils import extend_schema
 
 
@@ -11,57 +9,30 @@ from drf_spectacular.utils import extend_schema
     description="View the articles",
     tags=["Articles"],
 )
-class PostListView(generics.ListAPIView):
+class PostListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Post.published.all()
     serializer_class = PostSerializer
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_authenticated:
-            lmp = LastMenstrualPeriod.objects.filter(user=user).first()
-            if lmp:
-                trimester = lmp.trimester
-                queryset = Post.published.filter(trimester=trimester)
-                return queryset
-            else:
-                return Post.published.none()
-        else:
-            raise PermissionDenied("You must be logged in to view articles.")
-
-
-@extend_schema(
-    description="Create Article posts",
-    tags=["Articles"],
-)
-class PostCreateView(generics.CreateAPIView):
-    queryset = Post.objects.all()
-    serializer_class = PostSerializer
+    permission_classes = [IsAdminOrHealthAdvisorOrReadOnly]
 
     def perform_create(self, serializer):
-        if self.request.user.is_authenticated:
-            serializer.save(author=self.request.user)
-        else:
-            raise PermissionDenied("You must be logged in to create a post.")
-
-    def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        return Response(
-            {"message": "Article created successfully."}, status=status.HTTP_201_CREATED
-        )
+        serializer.save(author=self.request.user)
 
 
 @extend_schema(
-    description="Update or edit Article posts",
+    description="View the articles",
     tags=["Articles"],
 )
-class PostUpdateView(generics.UpdateAPIView):
+class PostRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
+    permission_classes = [IsAdminOrHealthAdvisorOrReadOnly]
 
+    lookup_field = "slug"
 
-@extend_schema(
-    description="Delete Article posts",
-    tags=["Articles"],
-)
-class PostDeleteView(generics.DestroyAPIView):
-    queryset = Post.objects.all()
-    serializer_class = PostSerializer
+    def get_object(self):
+        queryset = self.get_queryset()
+        queryset = self.filter_queryset(queryset)
+        slug = self.kwargs.get(self.lookup_field)
+        obj = generics.get_object_or_404(queryset, slug=slug)
+        self.check_object_permissions(self.request, obj)
+        return obj

@@ -13,6 +13,7 @@ class CustomUserAdmin(UserAdmin):
         "email",
         "firstname",
         "lastname",
+        "role",
         "is_staff",
         "is_profile_updated",
         "country",
@@ -23,7 +24,7 @@ class CustomUserAdmin(UserAdmin):
         "date_joined",
     )
     fieldsets = UserAdmin.fieldsets + (
-        ("Custom Fields", {"fields": ("phonenumber", "firstname", "lastname")}),
+        ("Custom Fields", {"fields": ("phonenumber", "firstname", "lastname", "role")}),
     )
 
 
