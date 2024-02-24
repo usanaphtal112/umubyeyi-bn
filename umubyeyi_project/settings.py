@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 from datetime import timedelta
 import dj_database_url
 from environs import Env
@@ -29,9 +30,16 @@ SECRET_KEY = env.str("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-# DEBUG = env.str("DJANGO_DEBUG", default="True").lower() == "true"
 
-ALLOWED_HOSTS = ["*"]
+
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    ".vercel.app",
+    ".pythonanywhere.com",
+    "now.sh",
+    "127.0.0.1",
+    "localhost",
+]
 
 
 # Application definition
@@ -49,9 +57,11 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework_simplejwt",
     "drf_spectacular",
+    "dj_database_url",
     # Local App
     "accounts.apps.AccountsConfig",
     "umubyeyi.apps.UmubyeyiConfig",
+    "articles.apps.ArticlesConfig",
 ]
 
 MIDDLEWARE = [
@@ -91,19 +101,27 @@ WSGI_APPLICATION = "umubyeyi_project.wsgi.application"
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env.str("POSTGRES_DATABASE"),
+        "USER": env.str("POSTGRES_USER"),
+        "HOST": env.str("POSTGRES_HOST"),
+        "PASSWORD": env.str("POSTGRES_PASSWORD"),
+    }
+}
+
 # DATABASES = {
 #     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": env.str("Database_Name"),
-#         "USER": env.str("Databse_User"),
-#         "PASSWORD": env.str("Database_Password"),
+#         "ENGINE": "django.db.backends.mysql",
+#         "NAME": env.str("MYSQL_DATABASE"),
+#         "USER": env.str("MYSQL_USER"),
+#         "PASSWORD": env.str("MYSQL_PASSWORD"),
+#         "PORT": env.str("MYSQL_PORT"),
+#         "HOST": env.str("MYSQL_HOST"),
 #     }
 # }
 
-# DATABASE_URL = env.str("DATABASE_URL")
-
-# # Parse database configuration from $DATABASE_URL
-DATABASES = {"default": dj_database_url.config(default="DATABASE_URL")}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -139,10 +157,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = "/static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATIC_URL = "static/"
+STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles_build", "static")
+
+MEDIA_URL = "media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -171,3 +192,22 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     # OTHER SETTINGS
 }
+
+CORS_ALLOWED_ORIGINS = [
+    "https://naphtal112.pythonanywhere.com",
+    "http://localhost:5173",
+    "http://localhost:8000",
+    "http://localhost:3000",
+    "https://umubyeyi.vercel.app",
+]
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
+
+CSRF_TRUSTED_ORIGIN = [
+    "https://naphtal112.pythonanywhere.com",
+    "http://localhost:5173",
+    "http://localhost:8000",
+    "http://localhost:3000",
+    "https://umubyeyi.vercel.app",
+]
