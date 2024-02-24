@@ -1,5 +1,4 @@
 import uuid
-
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
@@ -10,7 +9,10 @@ class CustomUserManager(BaseUserManager):
         if not phonenumber:
             raise ValueError("The phonenumber field must be set")
         email = self.normalize_email(email) if email else None
-        user = self.model(phonenumber=phonenumber, email=email, **extra_fields)
+        username = phonenumber
+        user = self.model(
+            phonenumber=phonenumber, email=email, username=username, **extra_fields
+        )
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -24,10 +26,10 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    username = models.CharField(max_length=30, unique=True)
-    email = models.EmailField(unique=True, blank=True, null=True)
-    firstname = models.CharField(max_length=30)
-    lastname = models.CharField(max_length=30)
+    # username = models.CharField(max_length=30, unique=True, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    firstname = models.CharField(max_length=30, blank=True, null=True)
+    lastname = models.CharField(max_length=30, blank=True, null=True)
     phonenumber = models.CharField(max_length=10, unique=True)
 
     is_profile_updated = models.BooleanField(default=False)
@@ -43,7 +45,7 @@ class CustomUser(AbstractUser):
     # Add any additional fields you need
 
     USERNAME_FIELD = "phonenumber"
-    REQUIRED_FIELDS = ["email", "firstname", "lastname"]
+    REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
 

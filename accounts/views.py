@@ -29,7 +29,6 @@ class UserCreateAPIView(generics.CreateAPIView):
             return validation_response
 
         phonenumber = data.get("phonenumber")
-        username = data.get("username")
 
         # Check if phone number is already taken
         if get_user_model().objects.filter(phonenumber=phonenumber).exists():
@@ -37,19 +36,11 @@ class UserCreateAPIView(generics.CreateAPIView):
                 {"error": "Phone Number already used."}, status=status.HTTP_409_CONFLICT
             )
 
-        if UserRegistrationValidator.is_username_already_taken(username):
-            return Response(
-                {"error": "Username already taken."}, status=status.HTTP_409_CONFLICT
-            )
-
         # Create the user After validation
         User = get_user_model()
         User.objects.create_user(
             phonenumber=phonenumber,
-            username=username,
             password=data.get("password"),
-            firstname=data.get("firstname"),
-            lastname=data.get("lastname"),
         )
         return Response(
             {"message": "User registered successfully"}, status=status.HTTP_201_CREATED

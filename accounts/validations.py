@@ -34,7 +34,7 @@ class UserRegistrationValidator:
             )
 
         # Basic pattern: Only digits, and length between 9 and 15 characters
-        phone_pattern = r"^\d{9,15}$"
+        phone_pattern = r"^\d{9,10}$"
         if not regex.match(phone_pattern, phone_number):
             return Response(
                 {"error": "Invalid phone number format."},
@@ -139,9 +139,9 @@ class UserRegistrationValidator:
     def validate_user_registration_data(data):
         # email = data.get("email")
         phonenumber = data.get("phonenumber")
-        username = data.get("username")
-        firstname = data.get("firstname")
-        lastname = data.get("lastname")
+        # username = data.get("username")
+        # firstname = data.get("firstname")
+        # lastname = data.get("lastname")
         password = data.get("password")
         confirm_password = data.get("confirm_password")
 
@@ -153,13 +153,13 @@ class UserRegistrationValidator:
         if phonenumber_error:
             return phonenumber_error
 
-        username_error = UserRegistrationValidator.validate_username_field(username)
-        if username_error:
-            return username_error
+        # username_error = UserRegistrationValidator.validate_username_field(username)
+        # if username_error:
+        #     return username_error
 
-        name_error = UserRegistrationValidator.validate_name(firstname, lastname)
-        if name_error:
-            return name_error
+        # name_error = UserRegistrationValidator.validate_name(firstname, lastname)
+        # if name_error:
+        #     return name_error
 
         password_error = UserRegistrationValidator.validate_password_field(
             password, confirm_password
