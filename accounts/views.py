@@ -8,6 +8,7 @@ from .serializers import (
     CustomUserSerializers,
     UserLoginSerializers,
     UserRoleSerializers,
+    RetrieveUserSerializer,
 )
 from .validations import UserRegistrationValidator
 
@@ -123,3 +124,22 @@ class UserLoginAPIView(APIView):
                 {"error": "Phone Number or Password is incorrect. Please try again."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+
+
+@extend_schema(
+    description="List of Health Advisor Users",
+    tags=["Users"],
+)
+class HealthAdvisorListView(generics.ListAPIView):
+    serializer_class = RetrieveUserSerializer
+
+    def get_queryset(self):
+        role_name = "Health Advisor"  # to be adjusted
+        queryset = RetrieveUserSerializer.filter_by_role(role_name)
+        return queryset
+
+    def handle_exception(self, exc):
+        if isinstance(exc, serializers.ValidationError):
+            # Return the custom error response
+            return Response({"detail": exc.detail}, status=status.HTTP_400_BAD_REQUEST)
+        return super().handle_exception(exc)
