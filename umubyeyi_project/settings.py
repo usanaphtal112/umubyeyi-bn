@@ -45,6 +45,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",  # third party app for running ASGI in development server
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -58,7 +59,9 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "drf_spectacular",
     "dj_database_url",
+    "channels",
     # Local App
+    "chat.apps.ChatConfig",
     "accounts.apps.AccountsConfig",
     "umubyeyi.apps.UmubyeyiConfig",
     "articles.apps.ArticlesConfig",
@@ -211,3 +214,14 @@ CSRF_TRUSTED_ORIGIN = [
     "http://localhost:3000",
     "https://umubyeyi.vercel.app",
 ]
+
+
+# ASGI Configurations
+
+ASGI_APPLICATION = "umubyeyi_project.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}
