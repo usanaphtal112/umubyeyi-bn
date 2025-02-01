@@ -1,50 +1,144 @@
 from django.contrib.auth import authenticate, get_user_model
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import (
-    CustomUserSerializers,
+    CustomUserSerializer,
     UserLoginSerializers,
     UserRoleSerializers,
     RetrieveUserSerializer,
 )
-from .validations import UserRegistrationValidator
+from .validations import (
+    is_phonenumber_already_registered,
+)
 
 
 @extend_schema(
-    description="User Registration Endpoint",
-    tags=["Users"],
+    description="Register a new user account",
+    tags=["Authentication"],
+    request=CustomUserSerializer,
+    responses={
+        201: OpenApiResponse(
+            description="User registered successfully",
+            examples=[
+                OpenApiExample(
+                    "Success Response",
+                    value={"message": "User registered successfully"},
+                )
+            ],
+        ),
+        400: OpenApiResponse(description="Invalid input data"),
+        409: OpenApiResponse(description="Phone number already registered"),
+    },
+    examples=[
+        OpenApiExample(
+            "Valid Registration",
+            value={
+                "phone_number": "+250700000000",
+                "first_name": "John",
+                "last_name": "Doe",
+                "password": "securepassword123",
+                "confirm_password": "securepassword123",
+            },
+            request_only=True,
+        )
+    ],
 )
-class UserCreateAPIView(generics.CreateAPIView):
-    serializer_class = CustomUserSerializers
+class RegisterAPIView(APIView):
+    """API endpoint for user registration."""
+
+    serializer_class = CustomUserSerializer
 
     def post(self, request):
-        data = request.data
-        validation_response = UserRegistrationValidator.validate_user_registration_data(
-            data
-        )
+        serializer = self.serializer_class(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializers.ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
-        if validation_response:
-            return validation_response
-
-        phonenumber = data.get("phonenumber")
-
-        # Check if phone number is already taken
-        if get_user_model().objects.filter(phonenumber=phonenumber).exists():
+        # Database check only after all validations pass
+        phone_number = serializer.validated_data["phone_number"]
+        if is_phonenumber_already_registered(phone_number):
             return Response(
-                {"error": "Phone Number already used."}, status=status.HTTP_409_CONFLICT
+                {"phone_number": "This phone number is already registered."},
+                status=status.HTTP_409_CONFLICT,
             )
 
-        # Create the user After validation
+        # Create user
         User = get_user_model()
         User.objects.create_user(
-            phonenumber=phonenumber,
-            password=data.get("password"),
+            phone_number=phone_number,
+            first_name=serializer.validated_data["first_name"],
+            last_name=serializer.validated_data["last_name"],
+            password=serializer.validated_data["password"],
         )
         return Response(
             {"message": "User registered successfully"}, status=status.HTTP_201_CREATED
+        )
+
+
+@extend_schema(
+    description="Authenticate user and retrieve access token",
+    tags=["Authentication"],
+    request=UserLoginSerializers,
+    responses={
+        200: OpenApiResponse(
+            description="Login successful",
+            examples=[
+                OpenApiExample(
+                    "Success Response",
+                    value={"access_token": "eyJ0eXAiOiJKV1QiLCJhbGc..."},
+                )
+            ],
+        ),
+        401: OpenApiResponse(description="Invalid credentials"),
+        400: OpenApiResponse(description="Invalid input data"),
+    },
+    examples=[
+        OpenApiExample(
+            "Valid Login",
+            value={"phone_number": "+250700000000", "password": "yourpassword"},
+            request_only=True,
+        )
+    ],
+)
+class LoginAPIView(APIView):
+    """API endpoint for user login."""
+
+    serializer_class = UserLoginSerializers
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializers.ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate credentials and get user
+        try:
+            user = authenticate(
+                request=request,
+                phone_number=serializer.validated_data["phone_number"],
+                password=serializer.validated_data["password"],
+            )
+        except serializers.ValidationError as e:
+            return Response(e.detail, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Generate token
+        token = RefreshToken.for_user(user)
+
+        return Response(
+            {
+                "access_token": str(token.access_token),
+                # "user": {
+                #     "email": user.email,
+                #     "first_name": user.first_name,
+                #     "last_name": user.last_name,
+                # },
+            },
+            status=status.HTTP_200_OK,
         )
 
 
@@ -65,70 +159,15 @@ class CreateUserRoleAPIView(generics.CreateAPIView):
 
 
 @extend_schema(
-    description="User Sign-In (Login) Endpoint",
+    description="Retrieve a list of all health advisors",
     tags=["Users"],
-)
-class UserLoginAPIView(APIView):
-    serializer_class = UserLoginSerializers
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
-
-        try:
-            serializer.is_valid(raise_exception=True)
-        except serializers.ValidationError as e:
-            phonenumber_error = e.detail.get("phonenumber")
-            password_error = e.detail.get("password")
-
-            if phonenumber_error:
-                return Response(
-                    {"error": "Phone Number Must not be blank."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if password_error:
-                return Response(
-                    {"error": "Password must not be blank."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        phonenumber = serializer.validated_data["phonenumber"]
-        password = serializer.validated_data["password"]
-
-        # Validate user inputs
-        if UserRegistrationValidator.validate_phone_number(phonenumber):
-            return Response(
-                {"error": "Phone Number or Password is incorrect. Please try again."},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        if UserRegistrationValidator.validate_password_field(password, password):
-            return Response(
-                {"error": "Phone Number or Password is incorrect. Please try again."},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            )
-
-        user = authenticate(
-            request,
-            phonenumber=phonenumber,
-            password=password,
-        )
-        if user:
-            refresh = RefreshToken.for_user(user)
-            data = {
-                "access_token": str(refresh.access_token),
-                # "user": CustomUserSerializer(user).data,
-            }
-            return Response(data, status=status.HTTP_200_OK)
-        else:
-            return Response(
-                {"error": "Phone Number or Password is incorrect. Please try again."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-
-@extend_schema(
-    description="List of Health Advisor Users",
-    tags=["Users"],
+    responses={
+        200: OpenApiResponse(
+            response=RetrieveUserSerializer,
+            description="List of health advisors retrieved successfully",
+        ),
+        400: OpenApiResponse(description="Invalid request"),
+    },
 )
 class HealthAdvisorListView(generics.ListAPIView):
     serializer_class = RetrieveUserSerializer

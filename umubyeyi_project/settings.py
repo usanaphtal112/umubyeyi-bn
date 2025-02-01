@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 from datetime import timedelta
-import dj_database_url
 from environs import Env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -35,8 +34,6 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     ".vercel.app",
-    ".pythonanywhere.com",
-    "now.sh",
     "127.0.0.1",
     "localhost",
 ]
@@ -57,10 +54,11 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework_simplejwt",
     "drf_spectacular",
-    "dj_database_url",
+    "channels",
     # Local App
     "accounts.apps.AccountsConfig",
     "umubyeyi.apps.UmubyeyiConfig",
+    "chat.apps.ChatConfig",
     "articles.apps.ArticlesConfig",
 ]
 
@@ -188,26 +186,37 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Umubyeyi App API",
-    "DESCRIPTION": "Version 1.0.0 of Umubyeyi App",
+    "DESCRIPTION": """
+    Umubyeyi App API provides endpoints for managing pregnancy tracking and health advisory services.
+    """,
     "VERSION": "1.0.0",
-    # OTHER SETTINGS
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "TAGS": [
+        {
+            "name": "Authentication",
+            "description": "Endpoints for user registration and login",
+        },
+        {"name": "Users", "description": "User management endpoints"},
+        {
+            "name": "Umubyeyi",
+            "description": "Pregnancy tracking and dashboard endpoints",
+        },
+    ],
+    "CONTACT": {"name": "API Support", "email": "support@umubyeyi.com"},
 }
 
 CORS_ALLOWED_ORIGINS = [
-    "https://naphtal112.pythonanywhere.com",
     "http://localhost:5173",
     "http://localhost:8000",
     "http://localhost:3000",
-    "https://umubyeyi.vercel.app",
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 
 CSRF_TRUSTED_ORIGIN = [
-    "https://naphtal112.pythonanywhere.com",
     "http://localhost:5173",
     "http://localhost:8000",
     "http://localhost:3000",
-    "https://umubyeyi.vercel.app",
 ]

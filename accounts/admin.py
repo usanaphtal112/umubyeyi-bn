@@ -1,58 +1,35 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
-from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from .models import CustomUser, Role
+from .forms import CustomUserCreationForm, CustomUserChangeForm
 
 
-class CustomUserChangeForm(UserChangeForm):
-    class Meta(UserChangeForm.Meta):
-        model = CustomUser
-        fields = "__all__"
-        exclude = ("username",)
-
-
-class CustomUserCreationForm(UserCreationForm):
-    class Meta(UserCreationForm.Meta):
-        model = CustomUser
-        fields = "__all__"
-        exclude = ("username",)
-
-
-class CustomUserAdmin(UserAdmin):
-    form = CustomUserChangeForm
+class CustomUserAdmin(admin.ModelAdmin):
     add_form = CustomUserCreationForm
-
-    def get_fieldsets(self, request, obj=None):
-        fieldsets = super().get_fieldsets(request, obj)
-        # Remove the 'username' field from the fieldsets
-        fieldsets = list(fieldsets)
-        for fieldset in fieldsets:
-            if "username" in fieldset[1]["fields"]:
-                fieldset[1]["fields"] = tuple(
-                    field for field in fieldset[1]["fields"] if field != "username"
-                )
-        return fieldsets
-
+    form = CustomUserChangeForm
+    list_display = ("phone_number", "first_name", "last_name", "role")
+    search_fields = ("phone_number", "first_name", "last_name")
+    ordering = ("phone_number",)
+    fieldsets = (
+        (None, {"fields": ("phone_number", "password")}),
+        ("Personal info", {"fields": ("first_name", "last_name")}),
+        ("Permissions", {"fields": ("role",)}),
+    )
     add_fieldsets = (
         (
             None,
             {
                 "classes": ("wide",),
-                "fields": ("phonenumber", "password1", "password2"),
+                "fields": (
+                    "phone_number",
+                    "password1",
+                    "password2",
+                    "first_name",
+                    "last_name",
+                    "role",
+                ),
             },
         ),
     )
-    list_display = (
-        "phonenumber",
-        "email",
-        "firstname",
-        "lastname",
-        "is_active",
-        "is_staff",
-        "is_superuser",
-    )
-    search_fields = ("phonenumber", "email", "firstname", "lastname")
-    ordering = ("phonenumber",)
 
 
 admin.site.register(CustomUser, CustomUserAdmin)

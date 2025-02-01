@@ -1,169 +1,80 @@
-# validation_utils.py
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 import re as regex
 
-from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
-from rest_framework import status
-from rest_framework.response import Response
+User = get_user_model()
 
 
-class UserRegistrationValidator:
-    @staticmethod
-    def validate_email_field(email):
-        if not email:
-            return Response(
-                {"error": "Email cannot be blank."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            validate_email(email)
-        except ValidationError:
-            return Response(
-                {"error": "Invalid email address."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        return None
-
-    @staticmethod
-    def validate_phone_number(phone_number):
-        if not phone_number:
-            return Response(
-                {"error": "Phone number cannot be blank."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+def validate_phonenumber_field(phonenumber):
+    if not phonenumber:
+        raise serializers.ValidationError({"phonenumber": "This field is required."})
+    try:
         # Basic pattern: Only digits, and length between 9 and 15 characters
         phone_pattern = r"^\d{9,10}$"
-        if not regex.match(phone_pattern, phone_number):
-            return Response(
-                {"error": "Invalid phone number format."},
-                status=status.HTTP_400_BAD_REQUEST,
+        if not regex.match(phone_pattern, phonenumber):
+            raise serializers.ValidationError(
+                {"phonenumber": "Invalid phone number format."}
             )
-
-        return None
-
-    @staticmethod
-    def validate_name(firstname, lastname):
-        if not firstname:
-            return Response(
-                {"error": "First Name can not be blank."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not lastname:
-            return Response(
-                {"error": "Last name can not be blank."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return None
-
-    @staticmethod
-    def validate_password_field(password, confirm_password):
-        if not password:
-            return Response(
-                {"error": "Password cannot be blank."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not confirm_password:
-            return Response(
-                {"error": "Confirm Password cannot be empty."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if password != confirm_password:
-            return Response(
-                {"error": "Passwords do not match."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if len(password) < 8:
-            return Response(
-                {"error": "Password must be at least 8 characters long."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        character_pattern = r"^(?=.*[A-Z])(?=.*[a-z]).+$"
-        if not regex.search(character_pattern, password):
-            return Response(
-                {
-                    "error": "Password must contain at least one small and capital letter."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        number_pattern = r".*\d+.*"
-        if not regex.search(number_pattern, password):
-            return Response(
-                {"error": "Password must contain at least one numerical value."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not regex.search(r"[!@#$%^&*()_+]", password):
-            return Response(
-                {"error": "Password must contain at least one special character."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return None
-
-    @staticmethod
-    def validate_username_field(username):
-        if not username:
-            return Response(
-                {"error": "Username cannot be blank."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if len(username) < 6:
-            return Response(
-                {"error": "Username should be at least 6 characters."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return None
-
-    @staticmethod
-    def is_email_already_registered(email):
-        User = get_user_model()
-        return User.objects.filter(email=email).exists()
-
-    @staticmethod
-    def is_username_already_taken(username):
-        User = get_user_model()
-        return User.objects.filter(username=username).exists()
-
-    @staticmethod
-    def validate_user_registration_data(data):
-        # email = data.get("email")
-        phonenumber = data.get("phonenumber")
-        # username = data.get("username")
-        # firstname = data.get("firstname")
-        # lastname = data.get("lastname")
-        password = data.get("password")
-        confirm_password = data.get("confirm_password")
-
-        # email_error = UserRegistrationValidator.validate_email_field(email)
-        # if email_error:
-        #     return email_error
-
-        phonenumber_error = UserRegistrationValidator.validate_phone_number(phonenumber)
-        if phonenumber_error:
-            return phonenumber_error
-
-        # username_error = UserRegistrationValidator.validate_username_field(username)
-        # if username_error:
-        #     return username_error
-
-        # name_error = UserRegistrationValidator.validate_name(firstname, lastname)
-        # if name_error:
-        #     return name_error
-
-        password_error = UserRegistrationValidator.validate_password_field(
-            password, confirm_password
+    except ValidationError:
+        raise serializers.ValidationError(
+            {"phonenumber": "Enter a valid phone number."}
         )
-        if password_error:
-            return password_error
-        return None
+    return phonenumber
+
+
+def validate_names(first_name, last_name):
+    if not first_name:
+        raise serializers.ValidationError({"first_name": "This field is required."})
+    if not first_name.isalpha():
+        raise serializers.ValidationError(
+            {"first_name": "Name should only contain letters."}
+        )
+
+    if not last_name:
+        raise serializers.ValidationError({"last_name": "This field is required."})
+    if not last_name.isalpha():
+        raise serializers.ValidationError(
+            {"last_name": "Name should only contain letters."}
+        )
+
+    return first_name, last_name
+
+
+def validate_password_fields(password, confirm_password):
+    if not password:
+        raise serializers.ValidationError({"password": "This field is required."})
+    if not confirm_password:
+        raise serializers.ValidationError(
+            {"confirm_password": "This field is required."}
+        )
+
+    if password != confirm_password:
+        raise serializers.ValidationError({"password": "Passwords do not match."})
+
+    if len(password) < 8:
+        raise serializers.ValidationError(
+            {"password": "Password must be at least 8 characters long."}
+        )
+
+    if not regex.search(r"^(?=.*[A-Z])(?=.*[a-z]).+$", password):
+        raise serializers.ValidationError(
+            {"password": "Password must contain at least one small and capital letter."}
+        )
+
+    if not regex.search(r".*\d+.*", password):
+        raise serializers.ValidationError(
+            {"password": "Password must contain at least one numerical value."}
+        )
+
+    if not regex.search(r"[!@#$%^&*()_+]", password):
+        raise serializers.ValidationError(
+            {"password": "Password must contain at least one special character."}
+        )
+
+    return password
+
+
+def is_phonenumber_already_registered(phone_number):
+    User = get_user_model()
+    return User.objects.filter(phone_number=phone_number).exists()
