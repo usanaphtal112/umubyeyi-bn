@@ -42,6 +42,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -54,7 +55,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework_simplejwt",
     "drf_spectacular",
-    "channels",
     # Local App
     "accounts.apps.AccountsConfig",
     "umubyeyi.apps.UmubyeyiConfig",
@@ -72,6 +72,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Token Blacklist Middleware
+    "accounts.middleware.TokenBlacklistMiddleware",
 ]
 
 ROOT_URLCONF = "umubyeyi_project.urls"
@@ -92,8 +94,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "umubyeyi_project.wsgi.application"
 
+WSGI_APPLICATION = "umubyeyi_project.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
@@ -170,6 +172,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "accounts.CustomUser"
 
+
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
@@ -179,15 +182,30 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
-
+# JWT Settings
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=30),
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
 }
+
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Umubyeyi App API",
     "DESCRIPTION": """
-    Umubyeyi App API provides endpoints for managing pregnancy tracking and health advisory services.
+    Umubyeyi App API provides endpoints for managing pregnancy tracking, health advisory services,
+    and real-time chat functionality. The chat system supports:
+
+    - Direct messaging between users
+    - Role-based group chats
+    - Health Advisor system inbox
+    - WebSocket-based real-time communication
+
+    WebSocket URL: ws://{host}/ws/chat/{conversation_id}/?token={token}
     """,
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
@@ -202,6 +220,10 @@ SPECTACULAR_SETTINGS = {
             "name": "Umubyeyi",
             "description": "Pregnancy tracking and dashboard endpoints",
         },
+        {
+            "name": "Chat",
+            "description": "Real-time chat functionality for users and health advisors",
+        },
     ],
     "CONTACT": {"name": "API Support", "email": "support@umubyeyi.com"},
 }
@@ -210,6 +232,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:8000",
     "http://localhost:3000",
+    "ws://localhost:8000",
+    "ws://localhost:3000",
+    "ws://localhost:5173",
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
@@ -219,4 +244,21 @@ CSRF_TRUSTED_ORIGIN = [
     "http://localhost:5173",
     "http://localhost:8000",
     "http://localhost:3000",
+    "ws://localhost:8000",
+    "ws://localhost:3000",
+    "ws://localhost:5173",
 ]
+
+ASGI_APPLICATION = "umubyeyi_project.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
+        "OPTIONS": {
+            "max_connections": 1000,  # Increase the number of connections
+            "health_check_interval": 60,  # Check the health of the connection every 60 seconds
+            "health_check_timeout": 30,  # Timeout for the health check
+        },
+    }
+}

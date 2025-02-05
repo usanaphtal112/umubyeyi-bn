@@ -1,12 +1,12 @@
 from django.contrib import admin
-from .models import CustomUser, Role
+from .models import CustomUser, BlacklistedToken
 from .forms import CustomUserCreationForm, CustomUserChangeForm
 
 
 class CustomUserAdmin(admin.ModelAdmin):
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
-    list_display = ("phone_number", "first_name", "last_name", "role")
+    list_display = ("id", "phone_number", "first_name", "last_name", "role")
     search_fields = ("phone_number", "first_name", "last_name")
     ordering = ("phone_number",)
     fieldsets = (
@@ -32,5 +32,11 @@ class CustomUserAdmin(admin.ModelAdmin):
     )
 
 
+class BlacklistedTokenAdmin(admin.ModelAdmin):
+    list_display = ("token", "blacklisted_at")
+    search_fields = ("token",)
+    ordering = ("blacklisted_at",)
+
+
 admin.site.register(CustomUser, CustomUserAdmin)
-admin.site.register(Role)
+admin.site.register(BlacklistedToken, BlacklistedTokenAdmin)

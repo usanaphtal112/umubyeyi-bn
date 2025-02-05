@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
-from .models import Role
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .validations import (
@@ -57,12 +56,6 @@ class LoginSerializer(serializers.Serializer):
         return {"phone_number": phone_number, "password": password}
 
 
-class UserRoleSerializers(serializers.ModelSerializer):
-    class Meta:
-        model = Role
-        fields = "__all__"
-
-
 class UserLoginSerializers(serializers.Serializer):
     phone_number = serializers.CharField()
     password = serializers.CharField(write_only=True)
@@ -82,10 +75,7 @@ class RetrieveUserSerializer(serializers.ModelSerializer):
     @staticmethod
     def filter_by_role(role_name):
         try:
-            # Fetch the role object by name using get()
-            role = Role.objects.get(name=role_name)
-            # Filter users by the fetched role
-            return User.objects.filter(role=role)
-        except Role.DoesNotExist:
+            return User.objects.filter(role=role_name)
+        except User.DoesNotExist:
             # Raise a specific exception if role is not found
-            raise NotFound(detail="The requested role is not available.")
+            raise NotFound(detail="The requested user is not available.")

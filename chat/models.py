@@ -1,52 +1,48 @@
 from django.db import models
-from django.utils import timezone
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 import uuid
-from accounts.models import CustomUser
+
+User = get_user_model()
 
 
-class Chat(models.Model):
+class Conversation(models.Model):
+    class ConversationType(models.TextChoices):
+        DIRECT = "DIRECT", "Direct"
+        GROUP = "GROUP", "Group"
+        SYSTEM = "SYSTEM", "System"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    type = models.CharField(
-        max_length=20, choices=[("inbox", "Inbox"), ("group", "Group")]
+    participants = models.ManyToManyField(User, related_name="conversations")
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="created_groups"
     )
-    name = models.CharField(
-        max_length=255, blank=True, null=True
-    )  # Optional for groups
-    created_at = models.DateTimeField(default=timezone.now)
-    participants = models.ManyToManyField(
-        CustomUser, related_name="chats", blank=True, through="ChatParticipant"
+    conversation_type = models.CharField(
+        max_length=10, choices=ConversationType.choices, default=ConversationType.DIRECT
     )
+    role_restriction = models.CharField(
+        max_length=20, choices=User.Role.choices, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.type} Chat: {self.name or 'N/A'}"
+    def clean(self):
+        if self.conversation_type == "GROUP" and not self.role_restriction:
+            raise ValidationError("Group conversations must have a role restriction")
 
-
-class ChatParticipant(models.Model):
-    chat = models.ForeignKey(Chat, on_delete=models.CASCADE)
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    unread_count = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        unique_together = ("chat", "user")
-
-    def __str__(self):
-        return f"{self.user.username} in {self.chat}"
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
 
 class Message(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.ForeignKey(
+        Conversation, on_delete=models.CASCADE, related_name="messages"
+    )
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
-    sender = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="sent_messages"
-    )
-    receiver = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="received_messages"
-    )
-    chat = models.ForeignKey(Chat, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(default=timezone.now)
-    read_by = models.ManyToManyField(
-        CustomUser, related_name="read_messages", blank=True
-    )
+    timestamp = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Message from {self.sender.phone_number} to {self.receiver.phone_number}: {self.content[:20]}"
+    class Meta:
+        ordering = ["timestamp"]

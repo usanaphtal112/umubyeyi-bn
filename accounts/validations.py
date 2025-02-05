@@ -6,21 +6,21 @@ import re as regex
 User = get_user_model()
 
 
-def validate_phonenumber_field(phonenumber):
-    if not phonenumber:
-        raise serializers.ValidationError({"phonenumber": "This field is required."})
+def validate_phonenumber_field(phone_number):
+    if not phone_number:
+        raise serializers.ValidationError({"phone_number": "This field is required."})
     try:
         # Basic pattern: Only digits, and length between 9 and 15 characters
         phone_pattern = r"^\d{9,10}$"
-        if not regex.match(phone_pattern, phonenumber):
+        if not regex.match(phone_pattern, phone_number):
             raise serializers.ValidationError(
-                {"phonenumber": "Invalid phone number format."}
+                {"phone_number": "Invalid phone number format."}
             )
     except ValidationError:
         raise serializers.ValidationError(
-            {"phonenumber": "Enter a valid phone number."}
+            {"phone_number": "Enter a valid phone number."}
         )
-    return phonenumber
+    return phone_number
 
 
 def validate_names(first_name, last_name):

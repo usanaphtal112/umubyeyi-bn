@@ -1,18 +1,24 @@
 from django.contrib.auth import authenticate, get_user_model
+from django.db import transaction, models
+from django.utils.timezone import now
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from .models import BlacklistedToken
 from .serializers import (
     CustomUserSerializer,
     UserLoginSerializers,
-    UserRoleSerializers,
     RetrieveUserSerializer,
 )
 from .validations import (
     is_phonenumber_already_registered,
 )
+from datetime import timedelta
+
+User = get_user_model()
 
 
 @extend_schema(
@@ -118,13 +124,20 @@ class LoginAPIView(APIView):
 
         # Validate credentials and get user
         try:
+            # Attempt to authenticate the user.
             user = authenticate(
                 request=request,
                 phone_number=serializer.validated_data["phone_number"],
                 password=serializer.validated_data["password"],
             )
-        except serializers.ValidationError as e:
-            return Response(e.detail, status=status.HTTP_401_UNAUTHORIZED)
+            # If authentication fails, raise a ValidationError.
+            if user is None:
+                raise serializers.ValidationError("Invalid credentials.")
+        except serializers.ValidationError:
+            # Return error response with the desired message format.
+            return Response(
+                {"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+            )
 
         # Generate token
         token = RefreshToken.for_user(user)
@@ -142,20 +155,60 @@ class LoginAPIView(APIView):
         )
 
 
-@extend_schema(
-    description="Create role endpoint",
-    tags=["Users"],
-)
-class CreateUserRoleAPIView(generics.CreateAPIView):
-    serializer_class = UserRoleSerializers
+class LogoutAPIView(APIView):
+    """
+    API endpoint for user logout.
+    Blacklists the access token to prevent further use.
+    """
 
-    def post(self, request, *args, **kwargs):
-        serializer = UserRoleSerializers(data=request.data)
+    permission_classes = [IsAuthenticated]
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    @extend_schema(
+        description="Logout user by blacklisting the access token",
+        tags=["Authentication"],
+        responses={
+            200: OpenApiResponse(
+                description="Logout successful",
+                examples=[
+                    OpenApiExample(
+                        "Success Response",
+                        value={"message": "Successfully logged out"},
+                    )
+                ],
+            ),
+            401: OpenApiResponse(
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(
+                        "Error Response",
+                        value={"error": "No valid token found"},
+                    )
+                ],
+            ),
+        },
+    )
+    def post(self, request):
+        auth_header = request.headers.get("Authorization")
+
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return Response(
+                {"error": "No valid token found"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        token = auth_header.split(" ")[1]
+
+        with transaction.atomic():
+            BlacklistedToken.objects.create(token=token, blacklisted_at=now())
+
+            # Delete tokens older than 3 months
+            expiry_date = now() - timedelta(days=90)
+            BlacklistedToken.objects.filter(blacklisted_at__lt=expiry_date).delete()
+
+        return Response(
+            {"message": "Successfully logged out"},
+            status=status.HTTP_200_OK,
+        )
 
 
 @extend_schema(
@@ -170,10 +223,12 @@ class CreateUserRoleAPIView(generics.CreateAPIView):
     },
 )
 class HealthAdvisorListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+
     serializer_class = RetrieveUserSerializer
 
     def get_queryset(self):
-        role_name = "Health Advisor"  # to be adjusted
+        role_name = User.Role.HEALTH_ADVISOR
         queryset = RetrieveUserSerializer.filter_by_role(role_name)
         return queryset
 
@@ -182,3 +237,30 @@ class HealthAdvisorListView(generics.ListAPIView):
             # Return the custom error response
             return Response({"detail": exc.detail}, status=status.HTTP_400_BAD_REQUEST)
         return super().handle_exception(exc)
+
+
+@extend_schema(
+    description="Retrieve a list of all users excluding Health Advisor, and Health center",
+    tags=["Users"],
+    responses={
+        200: OpenApiResponse(
+            response=RetrieveUserSerializer,
+            description="List of users excluding Health Advisor, and Health center retrieved successfully",
+        ),
+        400: OpenApiResponse(description="Invalid request"),
+    },
+)
+class UserListAPIView(generics.ListAPIView):
+    """
+    API endpoint for user.
+    Lists out all Users Excluding user with ADMIN, HEALTH ADVISOR AND HEALTH CENTER role users.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    serializer_class = RetrieveUserSerializer
+    queryset = User.objects.all().exclude(
+        models.Q(role=User.Role.ADMIN)
+        | models.Q(role=User.Role.HEALTH_ADVISOR)
+        | models.Q(role=User.Role.HEALTH_CENTER)
+    )
