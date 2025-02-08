@@ -4,6 +4,7 @@ from .views import (
     HealthAdvisorConversation,
     ConversationMessageList,
     DirectConversationAPIView,
+    ConversationParticipantAPIView,
 )
 
 urlpatterns = [
@@ -17,6 +18,11 @@ urlpatterns = [
         "conversations/health-advisor/<uuid:advisor_id>/",
         HealthAdvisorConversation.as_view(),
         name="health-advisor-conversation",
+    ),
+    path(
+        "conversations/<uuid:conversation_id>/participant/",
+        ConversationParticipantAPIView.as_view(),
+        name="conversation-participantd",
     ),
     path(
         "messages/<uuid:conversation_id>/",

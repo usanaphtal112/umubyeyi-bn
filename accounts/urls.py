@@ -6,6 +6,7 @@ from .views import (
     LogoutAPIView,
     HealthAdvisorListView,
     UserListAPIView,
+    UserProfileAPIView,
 )
 
 urlpatterns = [
@@ -18,4 +19,5 @@ urlpatterns = [
         name="health-advisor-list",
     ),
     path("users/", UserListAPIView.as_view(), name="user-list"),
+    path("users/profile/", UserProfileAPIView.as_view(), name="user-profile"),
 ]

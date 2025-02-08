@@ -8,6 +8,7 @@ from drf_spectacular.utils import (
     OpenApiParameter,
 )
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 import uuid
@@ -65,6 +66,47 @@ class ConversationList(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ConversationParticipantAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=["Chat"],
+        description="Fetch the participants of the given conversation",
+        parameters=[
+            OpenApiParameter(
+                name="conversation_id",
+                description="ID of the conversation to get its participants",
+                required=True,
+                type=str,
+            )
+        ],
+        responses={
+            200: ConversationSerializer,
+            404: OpenApiResponse(description="No conversation found"),
+            403: OpenApiResponse(
+                description="Not authorized to view this conversation"
+            ),
+        },
+    )
+    def get(self, request, conversation_id):
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+
+        # Ensure the authenticated user is part of the conversation
+        if request.user not in conversation.participants.all():
+            return Response(
+                {
+                    "detail": "You are not authorized to view this conversation's participants."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Serialize the conversation and return the participants
+        participants = conversation.participants.values(
+            "id", "phone_number", "first_name", "last_name"
+        )
+        return Response({"participants": list(participants)}, status=status.HTTP_200_OK)
 
 
 class DirectConversationAPIView(APIView):

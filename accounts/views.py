@@ -259,8 +259,27 @@ class UserListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     serializer_class = RetrieveUserSerializer
-    queryset = User.objects.all().exclude(
-        models.Q(role=User.Role.ADMIN)
-        | models.Q(role=User.Role.HEALTH_ADVISOR)
-        | models.Q(role=User.Role.HEALTH_CENTER)
-    )
+
+    def get_queryset(self):
+        return User.objects.exclude(
+            models.Q(
+                role__in=[
+                    User.Role.ADMIN,
+                    User.Role.HEALTH_ADVISOR,
+                    User.Role.HEALTH_CENTER,
+                ]
+            )
+            | models.Q(id=self.request.user.id)
+        )
+
+
+class UserProfileAPIView(generics.RetrieveAPIView):
+    """
+    API endpoint for retrieving the profile of the currently logged-in user.
+    """
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = RetrieveUserSerializer
+
+    def get_object(self):
+        return self.request.user
